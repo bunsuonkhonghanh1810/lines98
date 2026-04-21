@@ -17,9 +17,9 @@ import jwt
 
 # --- Import Logic Game & AI của bạn ---
 import database as db_mod
-from env.lines98_pvp_env import Lines98PvPEnv
+from game_env.lines98_pvp_env import Lines98PvPEnv
 from agent.alphabeta_agent import AlphaBetaAgent
-from env.board_logic import get_path
+from game_env.board_logic import get_path
 
 
 load_dotenv()
