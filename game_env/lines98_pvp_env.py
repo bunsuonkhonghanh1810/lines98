@@ -1,6 +1,6 @@
 import numpy as np
 import random
-from env.board_logic import get_valid_moves_fast, check_and_clear_lines
+from game_env.board_logic import get_valid_moves_fast, check_and_clear_lines
 
 class Lines98PvPEnv:
     def __init__(self):
