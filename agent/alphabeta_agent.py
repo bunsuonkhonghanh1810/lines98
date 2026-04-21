@@ -1,7 +1,7 @@
 import math
 import numpy as np
 import collections
-from env.board_logic import get_valid_moves_fast, check_and_clear_lines
+from game_env.board_logic import get_valid_moves_fast, check_and_clear_lines
 
 def simulate_move_only(board, move):
     (x1, y1), (x2, y2) = move
