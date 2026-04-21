@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .history-container {
+        max-width: 800px; margin: 2rem auto; padding: 2rem;
+        background: #fff; border: 4px solid #111; border-radius: 16px;
+        box-shadow: 8px 8px 0px #111;
+    }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { padding: 1rem; border-bottom: 2px solid #eee; text-align: left; }
+    th { background: #f9f9f9; border-bottom: 4px solid #111; font-weight: bold; color: #000; }
+    tr:hover { background: #fdfdfd; }
+    .win { color: #28a745; font-weight: bold; }
+    .lose { color: #d9534f; font-weight: bold; }
+    
+    /* --- BẢN VÁ RESPONSIVE CHO BẢNG TRÊN ĐIỆN THOẠI --- */
+    @media (max-width: 768px) {
+        .history-container { 
+            padding: 1rem; 
+            margin: 1rem; 
+            overflow-x: auto; /* Cho phép cuộn ngang nếu bảng quá to */
+        }
+        table { font-size: 0.9rem; }
+        th, td { padding: 0.7rem 0.5rem; white-space: nowrap; }
+    }
+</style>
+
+<div class="history-container">
+    <h1 style="text-transform: uppercase; font-weight: 900; letter-spacing: 1px; border-bottom: 2px dashed #ccc; padding-bottom: 10px;">
+        Lịch sử giao tranh
+    </h1>
+    
+    {% if history %}
+    <table>
+        <thead>
+            <tr>
+                <th>Thời gian</th>
+                <th>Chế độ</th>
+                <th>Đối thủ</th>
+                <th>Tỉ số (P1-P2)</th>
+                <th>Kết quả</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for match in history %}
+            <tr>
+                <td>{{ match.date }}</td>
+                <td><strong>{{ match.mode }}</strong></td>
+                <td>{{ match.enemy }}</td>
+                <td>{{ match.score }}</td>
+                <td class="{% if 'Thắng' in match.result %}win{% elif 'Thua' in match.result %}lose{% endif %}">
+                    {{ match.result }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="text-align: center; color: #666; margin-top: 2rem; font-size: 1.1rem;">
+        Chiến thần chưa xuất chinh trận nào. Ra làm một ván đi chứ!
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

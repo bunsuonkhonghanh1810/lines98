@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="hero-section">
+        <img src="{{ user.avatar_url }}" alt="Big Avatar" class="avatar-large">
+        <h1 class="welcome-text">Sẵn sàng chưa, {{ user.username }}?</h1>
+        
+        <style>
+            .dashboard-rank {
+                display: inline-flex; align-items: center; justify-content: center;
+                gap: 8px; padding: 8px 20px; margin-top: 10px;
+                border-radius: 30px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; font-size: 0.95rem;
+                border: 2px solid var(--rank-color);
+                background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(0,0,0,0.05) 100%), var(--bg-color);
+                color: var(--rank-color);
+                box-shadow: 0 4px 15px var(--glow-color); text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+                transition: all 0.3s ease; cursor: default;
+            }
+            .dashboard-rank:hover { transform: translateY(-2px); box-shadow: 0 6px 25px var(--glow-color); }
+
+            /* --- BẢN VÁ RESPONSIVE CHO DASHBOARD LÊN MOBILE --- */
+            @media (max-width: 850px) {
+                .dashboard-container {
+                    display: flex !important;
+                    flex-direction: column !important; /* Ép xếp dọc */
+                    align-items: center !important;
+                    padding: 10px !important;
+                }
+                .hero-section {
+                    width: 100% !important;
+                    text-align: center !important;
+                    margin-bottom: 2rem !important;
+                }
+                .action-menu {
+                    display: flex !important;
+                    flex-direction: column !important; /* Các nút bấm xếp hàng dọc */
+                    width: 100% !important;
+                    max-width: 400px; /* Chặn không cho nút to quá lố trên tablet */
+                    gap: 15px !important;
+                }
+                .game-btn {
+                    width: 100% !important;
+                    box-sizing: border-box !important;
+                    justify-content: flex-start !important; /* Ép icon và text dóng cho đều */
+                    padding: 15px 20px !important;
+                }
+            }
+        </style>
+
+        {% set rank = get_rank_info(user.elo) %}
+        <div class="dashboard-rank" style="--rank-color: {{ rank.color }}; --bg-color: {{ rank.color }}15; --glow-color: {{ rank.color }}40;">
+            <span style="font-size: 1.3rem; margin-bottom: 2px;">{{ rank.icon }}</span> 
+            CẤP BẬC: {{ rank.name }}
+        </div>
+    </div>
+
+    <div class="action-menu">
+        <a href="/play/single" class="game-btn single-btn">
+            <i class="fa-solid fa-user"></i>
+            <div class="btn-text">
+                <h3>Single Play</h3>
+                <p>Luyện tập và phá kỷ lục điểm số</p>
+            </div>
+        </a>
+        <a href="/play/bot" class="game-btn bot-btn">
+            <i class="fa-solid fa-robot"></i>
+            <div class="btn-text">
+                <h3>Đấu với Bot</h3>
+                <p>Thử sức với AI</p>
+            </div>
+        </a>
+        <a href="/waiting" class="game-btn pvp-btn">
+            <i class="fa-solid fa-khanda"></i>
+            <div class="btn-text">
+                <h3>Tìm trận (PvP)</h3>
+                <p>Đấu người thật, thăng hạng Elo</p>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    /* Bố cục chính của Thẻ Hồ Sơ */
+    .profile-card {
+        max-width: 600px; background: #fff;
+        border: 4px solid #111; border-radius: 20px; box-shadow: 12px 12px 0px #111;
+        padding: 2rem; text-align: center; position: relative;
+        
+        /* Căn giữa và tương thích Mobile */
+        margin: 5rem auto 2rem;
+        width: 90%; box-sizing: border-box;
+    }
+    
+    .profile-avatar {
+        width: 130px; height: 130px; border-radius: 50%;
+        border: 6px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        margin: -80px auto 1rem auto; /* Đẩy Avatar trồi lên cạnh trên */
+        background: #fff; display: block; object-fit: cover;
+    }
+    
+    /* Huy hiệu Rank lấp lánh (Khôi phục bản V2 cực cháy) */
+    .rank-badge-v2 {
+        position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 12px;
+        padding: 10px 24px; border-radius: 12px; margin-bottom: 2rem;
+        font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; font-size: 1.1rem;
+        border: 3px solid var(--rank-color);
+        background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0.08) 100%), var(--bg-color-with-alpha);
+        color: var(--rank-color);
+        box-shadow: 0 6px 20px var(--glow-color), inset 0 2px 5px rgba(255,255,255,0.2);
+        text-shadow: 1px 1px 3px rgba(0,0,0,0.4);
+        transition: all 0.25s ease; cursor: pointer; overflow: hidden;
+    }
+    .rank-badge-v2:hover { transform: translateY(-4px) scale(1.03); box-shadow: 0 10px 30px var(--glow-color); }
+    .rank-badge-v2::after {
+        content: ""; position: absolute; top: -100%; left: -100%; width: 60%; height: 250%;
+        background: rgba(255, 255, 255, 0.4); transform: rotate(35deg); transition: all 0.7s ease; opacity: 0.5;
+    }
+    .rank-badge-v2:hover::after { top: -50%; left: 120%; }
+
+    /* Lưới Thống kê */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+    .stat-box { background: #f9f9f9; padding: 1.5rem; border: 2px solid #ddd; border-radius: 12px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05); }
+    .stat-value { font-size: 2.2rem; font-weight: bold; color: #d9534f; text-shadow: 1px 1px 0 #111; margin-top: 5px;}
+    
+    /* Bảng Lịch sử Mini */
+    .mini-history { text-align: left; background: #222; color: #fff; padding: 1.5rem; border: 4px solid #111; border-radius: 12px; box-shadow: 5px 5px 0px #111;}
+    .mini-history h3 { color: #ffd700; text-transform: uppercase; margin-top: 0; border-bottom: 2px solid #444; padding-bottom: 10px;}
+    .mini-history p { border-bottom: 1px dashed #444; padding: 0.7rem 0; margin: 0; display: flex; justify-content: space-between; font-size: 0.95rem;}
+    .mini-history p:last-of-type { border-bottom: none; }
+    
+    /* Ép Lưới thống kê thành 1 cột ngang trên Mobile */
+    @media (max-width: 600px) {
+        .stats-grid { grid-template-columns: 1fr; gap: 1rem; }
+        .profile-card { padding: 1.5rem; margin-top: 4.5rem; }
+    }
+</style>
+
+<div class="profile-card">
+    {% set rank = get_rank_info(profile_user.elo) %}
+    
+    <img src="{{ profile_user.avatar_url }}" class="profile-avatar">
+    <h1 style="margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 800;">{{ profile_user.username }}</h1>
+    
+    <div class="rank-badge-v2"
+         style="--rank-color: {{ rank.color }};
+                --bg-color-with-alpha: {{ rank.color }}15;
+                --glow-color: {{ rank.color }}40;">
+        <span style="font-size: 1.6rem; transform: scale(1.1);">{{ rank.icon }}</span>
+        <span>RANK: {{ rank.name }} <span style="font-weight: 400; opacity: 0.7;">({{ profile_user.elo }} ELO)</span></span>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-box">
+            <div style="font-weight: bold; text-transform: uppercase; color: #666; font-size: 0.8rem;">Kỷ lục Single Play</div>
+            <div class="stat-value">{{ profile_user.highest_score }}</div>
+        </div>
+        <div class="stat-box">
+            <div style="font-weight: bold; text-transform: uppercase; color: #666; font-size: 0.8rem;">Tỉ lệ Thắng PvP</div>
+            <div class="stat-value">{{ winrate }}%</div>
+            <small style="color: #666; font-weight: bold;">({{ profile_user.pvp_wins }}W - {{ profile_user.pvp_losses }}L)</small>
+        </div>
+    </div>
+
+    <div class="mini-history">
+        <h3>Giao tranh gần đây</h3>
+        {% for match in recent_matches %}
+        <p>
+            <span><strong>{{ match.mode }}</strong> vs {{ match.enemy }}</span>
+            <span>{{ match.score }} | {{ match.result }}</span>
+        </p>
+        {% else %}
+        <p style="text-align: center; color: #999;">Chưa có dữ liệu thi đấu.</p>
+        {% endfor %}
+        <div style="text-align: center; margin-top: 1.5rem;">
+            <a href="/history" style="color: #111; background: #ffd700; font-weight: bold; text-decoration: none; border: 2px solid #ffd700; padding: 0.5rem 1rem; border-radius: 8px;">Xem tất cả</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

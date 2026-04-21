@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="margin-bottom: 2rem; text-align: center;">
+    <h1 style="text-transform: uppercase; font-weight: 900; letter-spacing: 1px; border-bottom: 2px dashed #ccc; padding-bottom: 10px; display: inline-block;">
+        🏆 Bảng Phong Thần (Rank)
+    </h1>
+</div>
+
+<div class="table-container" style="overflow-x: auto; width: 100%;">
+    <table style="width: 100%; min-width: 600px; border-collapse: collapse;">
+        <thead>
+            <tr>
+                <th style="color: #000000; padding: 1rem; border-bottom: 4px solid #111; background: #f9f9f9; text-align: left;">Hạng</th>
+                <th style="color: #000000; padding: 1rem; border-bottom: 4px solid #111; background: #f9f9f9; text-align: left;">Người chơi</th>
+                <th style="color: #000000; padding: 1rem; border-bottom: 4px solid #111; background: #f9f9f9; text-align: left;">Điểm Rank (Elo)</th>
+                <th style="color: #000000; padding: 1rem; border-bottom: 4px solid #111; background: #f9f9f9; text-align: left;">Kỷ lục Solo</th>
+                <th style="color: #000000; padding: 1rem; border-bottom: 4px solid #111; background: #f9f9f9; text-align: left;">Trận thắng</th>
+                <th style="color: #000000; padding: 1rem; border-bottom: 4px solid #111; background: #f9f9f9; text-align: left;">Tỉ lệ thắng</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for player in top_players %}
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 1rem; font-weight: bold; font-size: 1.2rem;">#{{ loop.index }}</td>
+                <td style="padding: 1rem;">
+                    <a href="/profile/{{ player.username }}" style="text-decoration: none; color: #111; font-weight: bold; display: flex; align-items: center; gap: 10px;">
+                        <img src="{{ player.avatar_url }}" style="width: 35px; height: 35px; border-radius: 50%; border: 2px solid #111; object-fit: cover;">
+                        {{ player.username }}
+                    </a>
+                </td>
+                <td style="padding: 1rem; font-weight: bold; color: #d9534f; font-size: 1.1rem;">{{ player.elo }}</td>
+                <td style="padding: 1rem; font-weight: bold;">{{ player.highest_score }}</td>
+                <td style="padding: 1rem;">{{ player.pvp_wins }}</td>
+                <td style="padding: 1rem;">
+                    {% if player.pvp_wins + player.pvp_losses > 0 %}
+                        <span style="background: #28a745; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 0.9rem;">
+                            {{ ((player.pvp_wins / (player.pvp_wins + player.pvp_losses)) * 100) | round(1) }}%
+                        </span>
+                    {% else %}
+                        <span style="background: #6c757d; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 0.9rem;">0%</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

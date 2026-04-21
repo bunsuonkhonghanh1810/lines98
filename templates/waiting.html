@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Đang tìm trận... | L98 Võ Đài</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .waiting-container {
+            display: flex; flex-direction: column; align-items: center; 
+            justify-content: center; height: 100vh; text-align: center;
+        }
+        .radar-spinner {
+            width: 100px; height: 100px; border: 8px solid #ddd;
+            border-top-color: #d9534f; border-radius: 50%;
+            animation: spin 1s linear infinite; margin: 2rem 0;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="waiting-container">
+        <h1>HỆ THỐNG ĐANG QUÉT...</h1>
+        <h2>Đang tìm kiếm đối thủ phù hợp với Elo của bạn</h2>
+        <div class="radar-spinner"></div>
+        
+        <p>Kiên nhẫn chút nhé, võ đài đang được dọn dẹp...</p>
+        <a href="/" class="btn-secondary" style="margin-top: 2rem;">Hủy tìm trận</a>
+    </div>
+
+    <script>
+        // Kết nối vào hàng đợi qua WebSocket
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const socket = new WebSocket(`${wsProtocol}://${window.location.host}/ws/matchmaking`);
+
+        socket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            
+            // Nếu Server báo đã tìm thấy đối thủ
+            if (data.match_found) {
+                // Tự động chuyển hướng cả 2 người vào chung 1 phòng PvP
+                window.location.href = `/play/pvp?room_id=${data.room_id}`;
+            }
+        };
+    </script>
+</body>
+</html>

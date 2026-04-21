@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UTC Lines 98 PvP</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* --- ĐÁP ỨNG MÀN HÌNH NHỎ (MOBILE & TABLET) --- */
+        @media (max-width: 768px) {
+            .top-header { flex-direction: column; gap: 15px; padding: 15px; }
+            .header-right { width: 100%; justify-content: center; flex-wrap: wrap; }
+        }
+    </style>
+</head>
+<body>
+    <header class="top-header">
+        <div class="logo">
+            <a href="/" style="text-decoration: none; color: #111;">Lines 98</a>
+        </div>
+        
+        <div class="header-right">
+            <a href="/history" class="header-btn" title="Lịch sử đấu"><i class="fa-solid fa-clock-rotate-left"></i></a>
+            <a href="/leaderboard" class="header-btn" title="Bảng xếp hạng"><i class="fa-solid fa-trophy"></i></a>
+            <a href="/profile/{{ user.username }}" class="mini-profile">
+                <div class="profile-info">
+                    <span class="username">{{ user.username }}</span>
+                    <span class="highscore">HS: {{ user.highest_score }} | Elo: {{ user.elo }}</span>
+                </div>
+                <img src="{{ user.avatar_url }}" alt="Avatar" class="avatar-small">
+            </a>
+            <a href="/logout" class="header-btn logout-btn"><i class="fa-solid fa-right-from-bracket"></i></a>
+        </div>
+    </header>
+
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>
