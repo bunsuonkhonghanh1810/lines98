@@ -2,6 +2,10 @@ let isMyTurn = true;
 let isGameOver = false;
 let myRole = 1; 
 
+// Lưu tọa độ để check mũi tên độc lập
+let myLastMoveStart = null;
+let myLastMoveEnd = null;
+
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const CELL_SIZE = 60;
@@ -40,12 +44,14 @@ function initWebSocket() {
             board = data.board;
             nextBalls = data.next_balls || []; 
             
-            // Xử lý điểm góc trên màn hình
             document.getElementById('playerScore').innerText = data.score_p1;
             if (document.getElementById('enemyScore')) document.getElementById('enemyScore').innerText = data.score_p2;
             
             if (data.my_role) myRole = data.my_role;
 
+            // ==========================================
+            // KHỐI 1: CHỈ QUẢN LÝ LƯỢT CHƠI (TURN)
+            // ==========================================
             if (data.turn) {
                 const statusEl = document.getElementById('gameStatus');
                 if (GAME_MODE === 'bot' || GAME_MODE === 'pvp') {
@@ -53,17 +59,46 @@ function initWebSocket() {
                         isMyTurn = true; 
                         statusEl.innerText = ">> ĐẾN LƯỢT BẠN <<";
                         statusEl.style.color = "#28a745";
-                        opponentPath = (data.last_path && data.last_path.length > 0) ? data.last_path : null;
                     } else {
                         isMyTurn = false; 
                         statusEl.innerText = ">> ĐỐI THỦ ĐANG NGHĨ <<";
                         statusEl.style.color = "#d9534f";
-                        opponentPath = null;
                     }
                 } else {
                     isMyTurn = true;
-                    opponentPath = null; 
                 }
+            }
+
+            // ==========================================
+            // KHỐI 2: CHỈ QUẢN LÝ MŨI TÊN (PATH)
+            // Tách biệt hoàn toàn, không phụ thuộc vào Turn
+            // ==========================================
+            if (data.last_path && data.last_path.length > 0) {
+                let pathStart = data.last_path[0];
+                let pathEnd = data.last_path[data.last_path.length - 1];
+
+                let isMyMove = false;
+                // Kiểm tra xem mũi tên server trả về có khớp tọa độ mình vừa click không
+                if (myLastMoveStart && myLastMoveEnd) {
+                    if (pathStart[0] === myLastMoveStart[0] && pathStart[1] === myLastMoveStart[1] &&
+                        pathEnd[0] === myLastMoveEnd[0] && pathEnd[1] === myLastMoveEnd[1]) {
+                        isMyMove = true;
+                    }
+                }
+
+                if (isMyMove) {
+                    // Đúng là nước cờ mình vừa đi -> Không hiện mũi tên lên máy mình
+                    opponentPath = null; 
+                } else {
+                    // Tọa độ lạ -> Đích thị đối thủ đi -> Phải hiện mũi tên!
+                    opponentPath = data.last_path; 
+                    
+                    // Reset lại tọa độ của mình để tránh nhầm lẫn cho ván sau
+                    myLastMoveStart = null;
+                    myLastMoveEnd = null;
+                }
+            } else {
+                opponentPath = null;
             }
 
             updateNextBalls(nextBalls);
@@ -72,11 +107,9 @@ function initWebSocket() {
         else if (data.type === 'game_over') {
             isGameOver = true; isMyTurn = false;
             
-            // TÌM ĐÚNG ROLE CỦA MÌNH ĐỂ LẤY ĐIỂM
             let myScore = (myRole === 1) ? data.score_p1 : data.score_p2;
             let enemyScore = (myRole === 1) ? data.score_p2 : data.score_p1;
             
-            // Gán điểm chuẩn xác vào HTML
             document.getElementById('endScoreP1').innerText = myScore;
             const p2ScoreEl = document.getElementById('endScoreP2');
 
@@ -220,7 +253,6 @@ function updateNextBalls(nextBallsData) {
     });
 }
 
-// BẢN VÁ: Tọa độ chuột cho Responsive
 canvas.addEventListener('mousedown', (e) => {
     if (isGameOver || !isMyTurn) return;
     
@@ -237,7 +269,11 @@ canvas.addEventListener('mousedown', (e) => {
     if (board[r][c] > 0) {
         selectedCell = { r, c }; drawBoard();
     } else if (selectedCell && board[r][c] === 0) {
-        socket.send(JSON.stringify({action: "move", start: [selectedCell.r, selectedCell.c], end: [r, c]}));
+        // --- CHỐT TỌA ĐỘ VỪA CLICK ---
+        myLastMoveStart = [selectedCell.r, selectedCell.c];
+        myLastMoveEnd = [r, c];
+        
+        socket.send(JSON.stringify({action: "move", start: myLastMoveStart, end: myLastMoveEnd}));
         selectedCell = null; drawBoard();
     }
 });
