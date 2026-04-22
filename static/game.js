@@ -40,6 +40,7 @@ function initWebSocket() {
             board = data.board;
             nextBalls = data.next_balls || []; 
             
+            // Xử lý điểm góc trên màn hình
             document.getElementById('playerScore').innerText = data.score_p1;
             if (document.getElementById('enemyScore')) document.getElementById('enemyScore').innerText = data.score_p2;
             
@@ -70,15 +71,23 @@ function initWebSocket() {
         }
         else if (data.type === 'game_over') {
             isGameOver = true; isMyTurn = false;
-            document.getElementById('endScoreP1').innerText = data.score_p1;
+            
+            // TÌM ĐÚNG ROLE CỦA MÌNH ĐỂ LẤY ĐIỂM
+            let myScore = (myRole === 1) ? data.score_p1 : data.score_p2;
+            let enemyScore = (myRole === 1) ? data.score_p2 : data.score_p1;
+            
+            // Gán điểm chuẩn xác vào HTML
+            document.getElementById('endScoreP1').innerText = myScore;
             const p2ScoreEl = document.getElementById('endScoreP2');
 
             if(p2ScoreEl) {
-                p2ScoreEl.innerText = data.score_p2;
+                p2ScoreEl.innerText = enemyScore;
+                
                 let title = "";
-                if (data.score_p1 === data.score_p2) title = "🤝 HÒA NHAU";
-                else if ((myRole === 1 && data.score_p1 > data.score_p2) || (myRole === 2 && data.score_p2 > data.score_p1)) title = "🏆 CHIẾN THẮNG";
+                if (myScore === enemyScore) title = "🤝 HÒA NHAU";
+                else if (myScore > enemyScore) title = "🏆 CHIẾN THẮNG";
                 else title = "💀 THẤT BẠI";
+                
                 document.getElementById('endTitle').innerText = title;
             } else {
                 document.getElementById('endTitle').innerText = "KẾT THÚC";
