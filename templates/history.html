@@ -27,8 +27,12 @@
 </style>
 
 <div class="history-container">
-    <h1 style="text-transform: uppercase; font-weight: 900; letter-spacing: 1px; border-bottom: 2px dashed #ccc; padding-bottom: 10px;">
-        Lịch sử giao tranh
+    <h1 style="text-transform: uppercase; font-weight: 900; letter-spacing: 1px; border-bottom: 2px dashed #ccc; padding-bottom: 10px; text-align: center;">
+        {% if user.id == target_user.id %}
+            Lịch sử giao tranh của Bạn
+        {% else %}
+            Lịch sử giao tranh của {{ target_user.username }}
+        {% endif %}
     </h1>
     
     {% if history %}

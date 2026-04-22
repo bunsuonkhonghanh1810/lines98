@@ -3,6 +3,9 @@ import asyncio
 from datetime import datetime, timedelta
 import uuid
 import random
+from urllib.parse import unquote
+from sqlalchemy import func
+from typing import Optional
 
 import os
 from dotenv import load_dotenv
@@ -92,7 +95,7 @@ async def logout():
     redirect.delete_cookie("session_token")
     return redirect
 
-# --- ROUTER: CÁC TRANG CHÍNH (BẮT BUỘC ĐĂNG NHẬP) ---
+# --- ROUTER: CÁC TRANG CHÍNH ---
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request, user: db_mod.User = Depends(get_current_user)):
     if not user:
@@ -112,42 +115,101 @@ async def view_leaderboard(request: Request, db: Session = Depends(db_mod.get_db
         context={"user": user, "top_players": top_players}
     )
 
-@app.get("/history", response_class=HTMLResponse)
-async def view_history(request: Request, db: Session = Depends(db_mod.get_db), user: db_mod.User = Depends(get_current_user)):
+# --- THÊM MỚI: ROUTER PROFILE CÁ NHÂN ---
+@app.get("/profile/{username}", response_class=HTMLResponse)
+async def view_profile(request: Request, username: str, db: Session = Depends(db_mod.get_db), user: db_mod.User = Depends(get_current_user)):
     if not user:
         return RedirectResponse(url="/login", status_code=302)
     
-    # Lấy 20 trận đấu gần nhất mà user này có tham gia (là P1 hoặc P2)
-    # Dùng dấu | thay cho OR trong SQLAlchemy
+    # Giải mã URL tiếng Việt và tìm kiếm không phân biệt hoa thường
+    decoded_name = unquote(username)
+    profile_user = db.query(db_mod.User).filter(
+        func.lower(db_mod.User.username) == func.lower(decoded_name)
+    ).first()
+
+    if not profile_user:
+        return HTMLResponse(content="<h1 style='text-align:center; margin-top:50px;'>404 - Không tìm thấy cao thủ này!</h1>", status_code=404)
+
+    # Tính tỷ lệ thắng
+    total_pvp = profile_user.pvp_wins + profile_user.pvp_losses
+    winrate = round((profile_user.pvp_wins / total_pvp) * 100) if total_pvp > 0 else 0
+
+    # Lấy 3 trận gần nhất làm Mini History
     raw_history = db.query(db_mod.Match).filter(
-        (db_mod.Match.player1_id == user.id) | (db_mod.Match.player2_id == user.id)
+        (db_mod.Match.player1_id == profile_user.id) | (db_mod.Match.player2_id == profile_user.id)
+    ).order_by(db_mod.Match.played_at.desc()).limit(3).all()
+    
+    recent_matches = []
+    for match in raw_history:
+        if match.match_type == "single":
+            enemy_name = "Tự kỷ"
+        elif match.match_type == "bot":
+            enemy_name = "Máy tính"
+        else:
+            enemy_id = match.player2_id if match.player1_id == profile_user.id else match.player1_id
+            enemy = db.query(db_mod.User).filter(db_mod.User.id == enemy_id).first()
+            enemy_name = enemy.username if enemy else "Unknown"
+
+        if match.match_type == "single": result_str = "Kỷ lục"
+        elif match.winner_id == profile_user.id: result_str = "Thắng"
+        elif match.winner_id is None: result_str = "Hòa"
+        else: result_str = "Thua"
+
+        recent_matches.append({
+            "mode": match.match_type.upper(),
+            "enemy": enemy_name,
+            "score": f"{match.score_p1} - {match.score_p2}",
+            "result": result_str
+        })
+
+    return templates.TemplateResponse(
+        request=request,
+        name="profile.html", 
+        context={
+            "user": user, 
+            "profile_user": profile_user, 
+            "winrate": winrate, 
+            "recent_matches": recent_matches
+        }
+    )
+
+# --- ROUTER HISTORY ĐÃ ĐƯỢC GỘP & SỬA LỖI ---
+@app.get("/history", response_class=HTMLResponse)
+async def view_history(request: Request, username: Optional[str] = None, db: Session = Depends(db_mod.get_db), user: db_mod.User = Depends(get_current_user)):
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    
+    target_user = user 
+    if username:
+        decoded_name = unquote(username)
+        found_user = db.query(db_mod.User).filter(func.lower(db_mod.User.username) == func.lower(decoded_name)).first()
+        if found_user:
+            target_user = found_user
+    
+    raw_history = db.query(db_mod.Match).filter(
+        (db_mod.Match.player1_id == target_user.id) | (db_mod.Match.player2_id == target_user.id)
     ).order_by(db_mod.Match.played_at.desc()).limit(20).all()
     
-    # Xử lý dữ liệu cho đẹp trước khi đưa lên HTML
     history_data = []
     for match in raw_history:
-        # Xác định đối thủ
         if match.match_type == "single":
             enemy_name = "Tự kỷ"
         elif match.match_type == "bot":
             enemy_name = "Máy tính (Bot)"
         else:
-            # Nếu là PvP, tìm tên người chơi còn lại
-            enemy_id = match.player2_id if match.player1_id == user.id else match.player1_id
+            enemy_id = match.player2_id if match.player1_id == target_user.id else match.player1_id
             enemy = db.query(db_mod.User).filter(db_mod.User.id == enemy_id).first()
             enemy_name = enemy.username if enemy else "Unknown"
 
-        # Xác định kết quả (Thắng/Thua/Hòa)
         if match.match_type == "single":
             result = "Kỷ lục"
-        elif match.winner_id == user.id:
+        elif match.winner_id == target_user.id:
             result = "🏆 Thắng"
         elif match.winner_id is None:
             result = "🤝 Hòa"
         else:
             result = "💀 Thua"
 
-        # Đẩy vào danh sách
         history_data.append({
             "mode": match.match_type.upper(),
             "enemy": enemy_name,
@@ -159,52 +221,7 @@ async def view_history(request: Request, db: Session = Depends(db_mod.get_db), u
     return templates.TemplateResponse(
         request=request,
         name="history.html",
-        context={"user": user, "history": history_data}
-    )
-
-@app.get("/profile/{username}", response_class=HTMLResponse)
-async def view_profile(request: Request, username: str, db: Session = Depends(db_mod.get_db), current_user: db_mod.User = Depends(get_current_user)):
-    if not current_user:
-        return RedirectResponse(url="/login", status_code=302)
-    
-    # Tìm thông tin người chơi được yêu cầu
-    profile_user = db.query(db_mod.User).filter(db_mod.User.username == username).first()
-    if not profile_user:
-        return HTMLResponse("Người chơi không tồn tại!", status_code=404)
-    
-    # Tính Tỉ lệ thắng (Winrate)
-    total_pvp = profile_user.pvp_wins + profile_user.pvp_losses
-    winrate = round((profile_user.pvp_wins / total_pvp) * 100) if total_pvp > 0 else 0
-    
-    # Lấy 5 trận gần nhất để làm Lịch sử thu gọn
-    recent_matches = db.query(db_mod.Match).filter(
-        (db_mod.Match.player1_id == profile_user.id) | (db_mod.Match.player2_id == profile_user.id)
-    ).order_by(db_mod.Match.played_at.desc()).limit(5).all()
-
-    # Xử lý format 5 trận này
-    history_data = []
-    for match in recent_matches:
-        if match.match_type in ["single", "bot"]:
-            enemy_name = "Tự kỷ" if match.match_type == "single" else "Máy (Bot)"
-            res = "Kỷ lục" if match.match_type == "single" else ("🏆 Thắng" if match.winner_id == profile_user.id else "💀 Thua")
-        else:
-            e_id = match.player2_id if match.player1_id == profile_user.id else match.player1_id
-            e_user = db.query(db_mod.User).filter(db_mod.User.id == e_id).first()
-            enemy_name = e_user.username if e_user else "Unknown"
-            res = "🤝 Hòa" if match.winner_id is None else ("🏆 Thắng" if match.winner_id == profile_user.id else "💀 Thua")
-
-        history_data.append({
-            "mode": match.match_type.upper(), "enemy": enemy_name,
-            "score": f"{match.score_p1} - {match.score_p2}", "result": res,
-            "date": (match.played_at + timedelta(hours=7)).strftime("%d/%m")
-        })
-    
-    return templates.TemplateResponse(
-        request=request, name="profile.html",
-        context={
-            "user": current_user, "profile_user": profile_user, 
-            "winrate": winrate, "total_pvp": total_pvp, "recent_matches": history_data
-        }
+        context={"user": user, "target_user": target_user, "history": history_data} 
     )
 
 @app.get("/waiting", response_class=HTMLResponse)
@@ -228,31 +245,21 @@ async def play_game(mode: str, request: Request, user: db_mod.User = Depends(get
 @app.websocket("/ws/matchmaking")
 async def websocket_matchmaking(websocket: WebSocket):
     await websocket.accept()
-    
-    # Cho người chơi vào hàng đợi
     waiting_players.append(websocket)
     print(f"Có người đang tìm trận. Hàng đợi hiện tại: {len(waiting_players)}")
 
     try:
-        # Nếu hàng đợi có từ 2 người trở lên -> Tiến hành ghép cặp!
         if len(waiting_players) >= 2:
             p1_ws = waiting_players.pop(0)
             p2_ws = waiting_players.pop(0)
-            
-            # Tạo ra một mã phòng ngẫu nhiên (VD: 'a1b2c3d4')
             room_id = str(uuid.uuid4())[:8]
-            
-            # Gửi mã phòng này cho cả 2 người để trình duyệt tự chuyển hướng
             await p1_ws.send_json({"match_found": True, "room_id": room_id})
             await p2_ws.send_json({"match_found": True, "room_id": room_id})
 
-        # Giữ đường truyền để đợi tín hiệu ghép cặp
         while True:
-            # Đoạn này chỉ để giữ WebSocket không bị ngắt cho đến khi tìm được đối thủ
             await websocket.receive_text()
 
     except WebSocketDisconnect:
-        # Nếu người chơi nản quá, bấm nút Hủy hoặc đóng tab -> Rút tên khỏi hàng đợi
         if websocket in waiting_players:
             waiting_players.remove(websocket)
             print("Một người chơi đã hủy tìm trận.")
@@ -294,7 +301,6 @@ async def websocket_game_endpoint(websocket: WebSocket, mode: str, db: Session =
         room = pvp_rooms[room_id]
         my_role = 1 if is_p1 else 2
 
-        # BẢN VÁ: Thêm tham số last_path để truyền đường đi của đối thủ
         async def broadcast_pvp_state(last_path=None):
             env = room["env"]
             base_state = {
@@ -303,7 +309,7 @@ async def websocket_game_endpoint(websocket: WebSocket, mode: str, db: Session =
                 "score_p1": env.score_p1, "score_p2": env.score_p2,
                 "next_balls": [[int(v) for v in ball] for ball in env.next_balls],
                 "turn": env.current_turn,
-                "last_path": last_path or [] # <-- Truyền đường đi vào đây
+                "last_path": last_path or []
             }
             if room["p1_ws"]:
                 try: await room["p1_ws"].send_json({**base_state, "my_role": 1})
@@ -327,7 +333,6 @@ async def websocket_game_endpoint(websocket: WebSocket, mode: str, db: Session =
                 data = await websocket.receive_text()
                 move_cmd = json.loads(data)
 
-                # --- XỬ LÝ CHAT VÀ THẢ CẢM XÚC ---
                 if move_cmd["action"] in ["chat", "emote"]:
                     msg_payload = {"type": move_cmd["action"], "sender_role": my_role}
                     if move_cmd["action"] == "chat": msg_payload["text"] = move_cmd.get("text", "")
@@ -352,7 +357,7 @@ async def websocket_game_endpoint(websocket: WebSocket, mode: str, db: Session =
 
                     if path:
                         env.step((start_pos, end_pos))
-                        await broadcast_pvp_state(last_path=path) # <-- Phát đường đi cho cả 2
+                        await broadcast_pvp_state(last_path=path)
 
                         if env.done:
                             db_new = db_mod.SessionLocal()
@@ -460,7 +465,7 @@ async def websocket_game_endpoint(websocket: WebSocket, mode: str, db: Session =
                     
                     if get_path(env.board, start_pos, end_pos):
                         env.step((start_pos, end_pos))
-                        await send_single_state(last_path=[]) # Truyền rỗng để tẩy đường đi của mình
+                        await send_single_state(last_path=[]) 
                         
                         if env.done:
                             save_match_result()
@@ -476,7 +481,7 @@ async def websocket_game_endpoint(websocket: WebSocket, mode: str, db: Session =
                                 env.step(best_move)
                             else: env.done = True
                             
-                            await send_single_state(last_path=bot_path) # Bắn mũi tên của Bot xuống
+                            await send_single_state(last_path=bot_path) 
                             if env.done:
                                 save_match_result()
                                 await websocket.send_json({"type": "game_over", "score_p1": env.score_p1, "score_p2": env.score_p2})
